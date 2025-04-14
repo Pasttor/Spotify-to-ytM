@@ -36,9 +36,9 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  return NextResponse.json({
-    access_token: data.access_token,
-    refresh_token: data.refresh_token,
-    expires_in: data.expires_in,
-  });
+  // ✅ Redirigir al home con el token en la URL
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"; // Asegúrate de tener esto
+  const redirectUrl = `${baseUrl}/?access_token=${data.access_token}`;
+
+  return NextResponse.redirect(redirectUrl);
 }
