@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Button } from "@/app/components/ui/button";
 import { Card, CardContent } from "@/app/components/ui/card";
 
+
+
 export default function Home() {
   const [status, setStatus] = useState("Esperando conexión...");
 

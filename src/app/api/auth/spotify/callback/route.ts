@@ -9,10 +9,10 @@ export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");
 
   if (!code) {
-    return new NextResponse("Code not provided", { status: 400 });
+    return new NextResponse("No code provided", { status: 400 });
   }
 
-  const body = new URLSearchParams({
+  const params = new URLSearchParams({
     grant_type: "authorization_code",
     code,
     redirect_uri: REDIRECT_URI,
@@ -25,18 +25,17 @@ export async function GET(req: NextRequest) {
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
     },
-    body: body.toString(),
+    body: params.toString(),
   });
 
   const data = await response.json();
 
   if (!response.ok) {
-    return new NextResponse(`Failed to get token: ${JSON.stringify(data)}`, {
+    return new NextResponse(`Error getting token: ${JSON.stringify(data)}`, {
       status: 500,
     });
   }
 
-  // Por ahora solo mostramos los tokens como JSON
   return NextResponse.json({
     access_token: data.access_token,
     refresh_token: data.refresh_token,
