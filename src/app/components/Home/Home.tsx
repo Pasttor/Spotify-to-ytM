@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Button } from "/components/ui/button";
-import { Card, CardContent } from "/components/ui/card";
+import { Button } from "@/app/components/ui/button";
+import { Card, CardContent } from "@/app/components/ui/card";
 
 export default function Home() {
   const [spotifyConnected, setSpotifyConnected] = useState(false);
