@@ -1,68 +1,28 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/app/components/ui/button";
 import { Card, CardContent } from "@/app/components/ui/card";
 
 export default function Home() {
-  const [spotifyConnected, setSpotifyConnected] = useState(false);
-  const [ytmConnected, setYtmConnected] = useState(false);
-  const [transferStarted, setTransferStarted] = useState(false);
-  const [transferComplete, setTransferComplete] = useState(false);
-
-  useEffect(() => {
-    if (transferStarted) {
-      const timer = setTimeout(() => {
-        setTransferComplete(true);
-      }, 3000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [transferStarted]);
-
-  const handleConnectYTM = () => setYtmConnected(true);
-  const handleStartTransfer = () => setTransferStarted(true);
+  const [status, setStatus] = useState("Esperando conexión...");
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white p-4">
-      <Card className="w-full max-w-md shadow-xl p-6">
-        <CardContent>
-          {!spotifyConnected || !ytmConnected ? (
-            <div className="flex flex-col gap-4">
-              <h1 className="text-xl font-bold">Conecta tus cuentas</h1>
+    <main className="min-h-screen flex flex-col items-center justify-center gap-8 p-6 bg-gray-50">
+      <Card className="w-full max-w-md shadow-xl">
+        <CardContent className="text-center py-8">
+          <h1 className="text-2xl font-bold mb-4">Migrar de Spotify a YouTube Music</h1>
+          <p className="mb-6">Conecta tu cuenta de Spotify para comenzar la migración.</p>
 
-              {!spotifyConnected ? (
-                <a href="/api/auth/spotify/login">
-                  <button className="bg-green-500 text-white px-4 py-2 rounded">
-                    Conectar con Spotify
-                  </button>
-                </a>
-              ) : (
-                <Button disabled>Spotify conectado</Button>
-              )}
+          <a href="/api/auth/spotify/login">
+            <button className="bg-green-500 hover:bg-green-600 transition-colors text-white px-4 py-2 rounded text-lg">
+              Conectar con Spotify
+            </button>
+          </a>
 
-              <Button onClick={handleConnectYTM} disabled={ytmConnected}>
-                {ytmConnected ? "YouTube Music conectado" : "Conectar YouTube Music"}
-              </Button>
-            </div>
-          ) : !transferComplete ? (
-            <div className="flex flex-col gap-4 items-center">
-              <h2 className="text-lg font-medium">Todo listo para transferir</h2>
-              {!transferStarted ? (
-                <Button onClick={handleStartTransfer}>Iniciar transferencia</Button>
-              ) : (
-                <p className="text-gray-500">Transfiriendo música...</p>
-              )}
-            </div>
-          ) : (
-            <div className="text-center">
-              <h2 className="text-lg font-bold text-green-600">¡Transferencia completa!</h2>
-              <p>123 canciones, 10 playlists, 4 álbumes migrados con éxito.</p>
-            </div>
-          )}
+          <p className="text-sm text-gray-500 mt-6">{status}</p>
         </CardContent>
       </Card>
-    </div>
+    </main>
   );
 }
-
