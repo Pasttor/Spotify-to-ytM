@@ -20,7 +20,6 @@ export default function Home() {
     }
   }, [transferStarted]);
 
-  const handleConnectSpotify = () => setSpotifyConnected(true);
   const handleConnectYTM = () => setYtmConnected(true);
   const handleStartTransfer = () => setTransferStarted(true);
 
@@ -31,9 +30,17 @@ export default function Home() {
           {!spotifyConnected || !ytmConnected ? (
             <div className="flex flex-col gap-4">
               <h1 className="text-xl font-bold">Conecta tus cuentas</h1>
-              <Button onClick={handleConnectSpotify} disabled={spotifyConnected}>
-                {spotifyConnected ? "Spotify conectado" : "Conectar Spotify"}
-              </Button>
+
+              {!spotifyConnected ? (
+                <a href="/api/auth/spotify/login">
+                  <button className="bg-green-500 text-white px-4 py-2 rounded">
+                    Conectar con Spotify
+                  </button>
+                </a>
+              ) : (
+                <Button disabled>Spotify conectado</Button>
+              )}
+
               <Button onClick={handleConnectYTM} disabled={ytmConnected}>
                 {ytmConnected ? "YouTube Music conectado" : "Conectar YouTube Music"}
               </Button>
@@ -58,3 +65,4 @@ export default function Home() {
     </div>
   );
 }
+
