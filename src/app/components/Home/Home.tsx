@@ -77,7 +77,13 @@ export default function Home() {
           }),
         });
 
-        const result = await res.json();
+        let result;
+        try {
+          result = await res.json();
+        } catch {
+          result = { error: "Respuesta vacía o inválida del servidor." };
+        }
+        
 
         if (res.ok) {
           setMigrationMessages(prev => [...prev, `✅ "${playlist.name}" migrada correctamente.`]);

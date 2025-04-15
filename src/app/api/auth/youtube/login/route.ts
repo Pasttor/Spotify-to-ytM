@@ -6,7 +6,8 @@ const REDIRECT_URI = process.env.YOUTUBE_REDIRECT_URI!;
 
 // Scopes que le pides al usuario
 const SCOPES = [
-  "https://www.googleapis.com/auth/youtube", // acceso total a la cuenta de YouTube
+    "https://www.googleapis.com/auth/youtube",
+  "https://www.googleapis.com/auth/youtube.force-ssl"
 ].join(" ");
 
 export async function GET(req: NextRequest) {
