@@ -11,17 +11,21 @@ export default function Home() {
   // Recuperar token desde la URL y guardarlo en localStorage
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get("access_token");
+    const spotifyToken = urlParams.get("access_token");
+    const youtubeToken = urlParams.get("yt_access_token");
 
-    if (token) {
-      setAccessToken(token);
-      localStorage.setItem("spotify_access_token", token);
+    if (spotifyToken) {
+      setAccessToken(spotifyToken);
+      localStorage.setItem("spotify_access_token", spotifyToken);
     } else {
-      // Si no viene en la URL, busca en localStorage
       const savedToken = localStorage.getItem("spotify_access_token");
       if (savedToken) {
         setAccessToken(savedToken);
       }
+    }
+
+    if (youtubeToken) {
+      localStorage.setItem("youtube_access_token", youtubeToken);
     }
   }, []);
 
@@ -51,11 +55,17 @@ export default function Home() {
       <Card className="w-full max-w-md shadow-xl">
         <CardContent className="text-center py-8">
           <h1 className="text-2xl font-bold mb-4">Migrar de Spotify a YouTube Music</h1>
-          <p className="mb-6">Conecta tu cuenta de Spotify para comenzar la migración.</p>
+          <p className="mb-6">Conecta tus cuentas para comenzar la migración.</p>
 
           <a href="/api/auth/spotify/login">
-            <Button className="bg-green-500 hover:bg-green-600 w-full mb-4">
+            <Button className="bg-green-500 hover:bg-green-600 w-full mb-2">
               Conectar con Spotify
+            </Button>
+          </a>
+
+          <a href="/api/auth/youtube/login">
+            <Button className="bg-red-600 hover:bg-red-700 w-full mb-4">
+              Conectar con YouTube
             </Button>
           </a>
 
