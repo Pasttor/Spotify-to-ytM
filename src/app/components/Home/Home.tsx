@@ -3,38 +3,41 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
+import { Progress } from "@/app/components/ui/progress";
 
 export default function Home() {
-  const [spotifyToken, setSpotifyToken] = useState<string | null>(null);
-  const [youtubeToken, setYoutubeToken] = useState<string | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [ytAccessToken, setYtAccessToken] = useState<string | null>(null);
   const [playlists, setPlaylists] = useState<any[]>([]);
+  const [progress, setProgress] = useState<number>(0);
+  const [migrationMessages, setMigrationMessages] = useState<string[]>([]);
 
-  // Recuperar tokens desde la URL o localStorage
+  // Obtener tokens desde URL o localStorage
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const spToken = urlParams.get("access_token");
-    const ytToken = urlParams.get("yt_access_token");
 
-    if (spToken) {
-      setSpotifyToken(spToken);
-      localStorage.setItem("spotify_access_token", spToken);
+    const spotifyToken = urlParams.get("access_token");
+    const youtubeToken = urlParams.get("yt_access_token");
+
+    if (spotifyToken) {
+      setAccessToken(spotifyToken);
+      localStorage.setItem("spotify_access_token", spotifyToken);
     } else {
-      const savedSpotify = localStorage.getItem("spotify_access_token");
-      if (savedSpotify) setSpotifyToken(savedSpotify);
+      const savedToken = localStorage.getItem("spotify_access_token");
+      if (savedToken) setAccessToken(savedToken);
     }
 
-    if (ytToken) {
-      setYoutubeToken(ytToken);
-      localStorage.setItem("yt_access_token", ytToken);
+    if (youtubeToken) {
+      setYtAccessToken(youtubeToken);
+      localStorage.setItem("yt_access_token", youtubeToken);
     } else {
-      const savedYT = localStorage.getItem("yt_access_token");
-      if (savedYT) setYoutubeToken(savedYT);
+      const savedYtToken = localStorage.getItem("yt_access_token");
+      if (savedYtToken) setYtAccessToken(savedYtToken);
     }
   }, []);
 
-  // Obtener playlists de Spotify
   const handleFetchPlaylists = async () => {
-    if (!spotifyToken) {
+    if (!accessToken) {
       alert("Necesitas autenticarte con Spotify primero.");
       return;
     }
@@ -42,7 +45,7 @@ export default function Home() {
     try {
       const res = await fetch("/api/spotify/playlists", {
         headers: {
-          Authorization: `Bearer ${spotifyToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
       });
       const data = await res.json();
@@ -52,44 +55,40 @@ export default function Home() {
     }
   };
 
-  // Migrar playlist a YouTube
-  const handleMigratePlaylist = async (playlistId: string, title: string) => {
-    if (!spotifyToken || !youtubeToken) {
-      alert("Debes estar autenticado con ambas plataformas.");
-      return;
-    }
+  const handleMigration = async () => {
+    if (!ytAccessToken || !playlists.length) return;
 
-    try {
-      // 1. Obtener canciones de la playlist de Spotify
-      const resTracks = await fetch(`/api/spotify/playlist-tracks?playlistId=${playlistId}`, {
-        headers: {
-          Authorization: `Bearer ${spotifyToken}`,
-        },
-      });
+    setProgress(0);
+    setMigrationMessages([]);
 
-      const { tracks } = await resTracks.json();
+    for (let i = 0; i < playlists.length; i++) {
+      const playlist = playlists[i];
 
-      // 2. Enviar al backend para crear playlist en YouTube y migrar canciones
-      const resMigrate = await fetch("/api/youtube/migrate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ytToken: youtubeToken,
-          title,
-          tracks,
-        }),
-      });
+      try {
+        const res = await fetch("/api/youtube/create-playlist", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${ytAccessToken}`,
+          },
+          body: JSON.stringify({
+            name: playlist.name,
+            description: playlist.description || "Migrada desde Spotify",
+          }),
+        });
 
-      const data = await resMigrate.json();
-      if (data.success) {
-        alert(`Playlist "${title}" migrada exitosamente a YouTube.`);
-      } else {
-        alert("Ocurrió un error durante la migración.");
+        const result = await res.json();
+
+        if (res.ok) {
+          setMigrationMessages(prev => [...prev, `✅ "${playlist.name}" migrada correctamente.`]);
+        } else {
+          setMigrationMessages(prev => [...prev, `❌ Error en "${playlist.name}": ${result.error}`]);
+        }
+      } catch (err) {
+        setMigrationMessages(prev => [...prev, `❌ Error en "${playlist.name}": ${err}`]);
       }
-    } catch (error) {
-      console.error("Error migrando playlist:", error);
+
+      setProgress(Math.round(((i + 1) / playlists.length) * 100));
     }
   };
 
@@ -100,37 +99,47 @@ export default function Home() {
           <h1 className="text-2xl font-bold mb-4">Migrar de Spotify a YouTube Music</h1>
           <p className="mb-6">Conecta tus cuentas para comenzar la migración.</p>
 
-          <div className="flex flex-col gap-3 mb-6">
-            <a href="/api/auth/spotify/login">
-              <Button className="bg-green-500 hover:bg-green-600 w-full">
-                Conectar con Spotify
-              </Button>
-            </a>
-            <a href="/api/auth/youtube/login">
-              <Button className="bg-red-500 hover:bg-red-600 w-full">
-                Conectar con YouTube
-              </Button>
-            </a>
-          </div>
+          <a href="/api/auth/spotify/login">
+            <Button className="bg-green-500 hover:bg-green-600 w-full mb-2">
+              Conectar con Spotify
+            </Button>
+          </a>
 
-          <Button onClick={handleFetchPlaylists} className="bg-blue-500 hover:bg-blue-600 w-full mb-4">
-            Obtener playlists de Spotify
+          <a href="/api/auth/youtube/login">
+            <Button className="bg-red-500 hover:bg-red-600 w-full mb-4">
+              Conectar con YouTube
+            </Button>
+          </a>
+
+          <Button
+            onClick={handleFetchPlaylists}
+            className="bg-blue-500 hover:bg-blue-600 w-full"
+          >
+            Obtener playlists
           </Button>
 
-          {playlists.length > 0 && (
-            <div className="mt-4 text-left">
-              <h2 className="text-lg font-semibold mb-2">Tus Playlists:</h2>
-              <ul className="list-disc ml-5">
-                {playlists.map((playlist: any) => (
-                  <li key={playlist.id} className="mb-2">
-                    {playlist.name}
-                    <Button
-                      onClick={() => handleMigratePlaylist(playlist.id, playlist.name)}
-                      className="ml-2 bg-red-500 hover:bg-red-600"
-                    >
-                      Migrar a YouTube
-                    </Button>
-                  </li>
+          {playlists.length > 0 && ytAccessToken && (
+            <Button
+              onClick={handleMigration}
+              className="bg-yellow-500 hover:bg-yellow-600 w-full mt-4"
+            >
+              Migrar a YouTube
+            </Button>
+          )}
+
+          {progress > 0 && progress < 100 && (
+            <div className="mt-4">
+              <Progress value={progress} />
+              <p className="text-sm mt-2">Migrando... {progress}%</p>
+            </div>
+          )}
+
+          {migrationMessages.length > 0 && (
+            <div className="mt-6 text-left">
+              <h2 className="text-md font-semibold mb-2">Resultado de la migración:</h2>
+              <ul className="list-disc ml-5 text-sm space-y-1">
+                {migrationMessages.map((msg, idx) => (
+                  <li key={idx}>{msg}</li>
                 ))}
               </ul>
             </div>
