@@ -1,11 +1,11 @@
-// src/app/api/youtube/create-playlist/route.ts
+// src/app/api/youtube/add-to-playlist/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
-  const { accessToken, title, description } = await req.json();
+  const { accessToken, playlistId, videoId } = await req.json();
 
   try {
-    const res = await fetch("https://www.googleapis.com/youtube/v3/playlists?part=snippet%2Cstatus", {
+    const res = await fetch("https://www.googleapis.com/youtube/v3/playlistItems?part=snippet", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -13,11 +13,11 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         snippet: {
-          title,
-          description,
-        },
-        status: {
-          privacyStatus: "private",
+          playlistId,
+          resourceId: {
+            kind: "youtube#video",
+            videoId,
+          },
         },
       }),
     });
@@ -28,8 +28,8 @@ export async function POST(req: NextRequest) {
       return new NextResponse(JSON.stringify({ error: data }), { status: res.status });
     }
 
-    return NextResponse.json({ playlistId: data.id });
+    return NextResponse.json({ success: true });
   } catch (err) {
-    return new NextResponse(JSON.stringify({ error: "Error al crear la playlist" }), { status: 500 });
+    return new NextResponse(JSON.stringify({ error: "Error al añadir a la playlist" }), { status: 500 });
   }
 }

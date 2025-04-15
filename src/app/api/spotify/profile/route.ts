@@ -1,4 +1,4 @@
-// src/app/api/spotify/playlists/route.ts
+// src/app/api/spotify/profile/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
@@ -9,20 +9,20 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const response = await fetch("https://api.spotify.com/v1/me/playlists", {
+    const res = await fetch("https://api.spotify.com/v1/me", {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
     });
 
-    const data = await response.json();
+    const data = await res.json();
 
-    if (!response.ok) {
-      return NextResponse.json({ error: data }, { status: response.status });
+    if (!res.ok) {
+      return NextResponse.json({ error: data }, { status: res.status });
     }
 
     return NextResponse.json(data);
   } catch (error) {
-    return NextResponse.json({ error: "Error obteniendo playlists de Spotify" }, { status: 500 });
+    return NextResponse.json({ error: "Error obteniendo perfil de Spotify" }, { status: 500 });
   }
 }

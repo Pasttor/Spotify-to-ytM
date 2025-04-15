@@ -6,48 +6,46 @@ import { Button } from "@/app/components/ui/button";
 import { Progress } from "@/app/components/ui/progress";
 
 export default function Home() {
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [ytAccessToken, setYtAccessToken] = useState<string | null>(null);
+  const [spotifyToken, setSpotifyToken] = useState<string | null>(null);
+  const [ytToken, setYtToken] = useState<string | null>(null);
   const [playlists, setPlaylists] = useState<any[]>([]);
-  const [progress, setProgress] = useState<number>(0);
-  const [migrationMessages, setMigrationMessages] = useState<string[]>([]);
+  const [progress, setProgress] = useState(0);
+  const [results, setResults] = useState<string[]>([]);
 
-  // Obtener tokens desde URL o localStorage
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
 
-    const spotifyToken = urlParams.get("access_token");
-    const youtubeToken = urlParams.get("yt_access_token");
+    const spotify = urlParams.get("access_token");
+    const youtube = urlParams.get("yt_access_token");
 
-    if (spotifyToken) {
-      setAccessToken(spotifyToken);
-      localStorage.setItem("spotify_access_token", spotifyToken);
+    if (spotify) {
+      localStorage.setItem("spotify_access_token", spotify);
+      setSpotifyToken(spotify);
     } else {
-      const savedToken = localStorage.getItem("spotify_access_token");
-      if (savedToken) setAccessToken(savedToken);
+      const saved = localStorage.getItem("spotify_access_token");
+      if (saved) setSpotifyToken(saved);
     }
 
-    if (youtubeToken) {
-      setYtAccessToken(youtubeToken);
-      localStorage.setItem("yt_access_token", youtubeToken);
+    if (youtube) {
+      localStorage.setItem("yt_access_token", youtube);
+      setYtToken(youtube);
     } else {
-      const savedYtToken = localStorage.getItem("yt_access_token");
-      if (savedYtToken) setYtAccessToken(savedYtToken);
+      const saved = localStorage.getItem("yt_access_token");
+      if (saved) setYtToken(saved);
     }
   }, []);
 
   const handleFetchPlaylists = async () => {
-    if (!accessToken) {
+    if (!spotifyToken) {
       alert("Necesitas autenticarte con Spotify primero.");
       return;
     }
 
     try {
       const res = await fetch("/api/spotify/playlists", {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
+        headers: { Authorization: `Bearer ${spotifyToken}` },
       });
+
       const data = await res.json();
       setPlaylists(data.items || []);
     } catch (error) {
@@ -55,97 +53,126 @@ export default function Home() {
     }
   };
 
-  const handleMigration = async () => {
-    if (!ytAccessToken || !playlists.length) return;
+  const searchYouTube = async (query: string) => {
+    const res = await fetch(
+      `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(
+        query
+      )}&type=video&maxResults=1&key=${process.env.NEXT_PUBLIC_YT_API_KEY}`
+    );
+    const data = await res.json();
+    return data.items?.[0]?.id?.videoId;
+  };
 
-    setProgress(0);
-    setMigrationMessages([]);
+  const migrateToYouTube = async () => {
+    if (!ytToken || !spotifyToken) {
+      alert("Debes autenticarte con Spotify y YouTube primero.");
+      return;
+    }
 
-    for (let i = 0; i < playlists.length; i++) {
-      const playlist = playlists[i];
+    const total = playlists.length;
+    let current = 0;
+    const finalResults: string[] = [];
 
+    for (const playlist of playlists) {
       try {
-        const res = await fetch("/api/youtube/create-playlist", {
+        // 1. Obtener canciones de la playlist
+        const tracksRes = await fetch(
+          `/api/spotify/playlist/${playlist.id}/tracks`,
+          {
+            headers: { Authorization: `Bearer ${spotifyToken}` },
+          }
+        );
+        const trackData = await tracksRes.json();
+        const tracks = trackData.items || [];
+
+        // 2. Crear playlist en YouTube
+        const createRes = await fetch("/api/youtube/create-playlist", {
           method: "POST",
           headers: {
+            Authorization: `Bearer ${ytToken}`,
             "Content-Type": "application/json",
-            Authorization: `Bearer ${ytAccessToken}`,
           },
-          body: JSON.stringify({
-            name: playlist.name,
-            description: playlist.description || "Migrada desde Spotify",
-          }),
+          body: JSON.stringify({ title: playlist.name }),
         });
 
-        let result;
-        try {
-          result = await res.json();
-        } catch {
-          result = { error: "Respuesta vacía o inválida del servidor." };
-        }
-        
+        const { id: ytPlaylistId } = await createRes.json();
 
-        if (res.ok) {
-          setMigrationMessages(prev => [...prev, `✅ "${playlist.name}" migrada correctamente.`]);
-        } else {
-          setMigrationMessages(prev => [...prev, `❌ Error en "${playlist.name}": ${result.error}`]);
+        // 3. Buscar y agregar cada canción
+        for (const item of tracks) {
+          const track = item.track;
+          const query = `${track.name} ${track.artists[0].name}`;
+          const videoId = await searchYouTube(query);
+
+          if (videoId) {
+            await fetch("/api/youtube/add-to-playlist", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${ytToken}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                playlistId: ytPlaylistId,
+                videoId,
+              }),
+            });
+          }
         }
-      } catch (err) {
-        setMigrationMessages(prev => [...prev, `❌ Error en "${playlist.name}": ${err}`]);
+
+        finalResults.push(`✅ Migrado: ${playlist.name}`);
+      } catch (err: any) {
+        finalResults.push(`❌ Error en "${playlist.name}": ${err.message}`);
       }
 
-      setProgress(Math.round(((i + 1) / playlists.length) * 100));
+      current++;
+      setProgress(Math.round((current / total) * 100));
     }
+
+    setResults(finalResults);
   };
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center gap-8 p-6 bg-gray-50">
+    <main className="min-h-screen flex flex-col items-center justify-center gap-6 p-6 bg-gray-50">
       <Card className="w-full max-w-md shadow-xl">
         <CardContent className="text-center py-8">
           <h1 className="text-2xl font-bold mb-4">Migrar de Spotify a YouTube Music</h1>
-          <p className="mb-6">Conecta tus cuentas para comenzar la migración.</p>
-
           <a href="/api/auth/spotify/login">
-            <Button className="bg-green-500 hover:bg-green-600 w-full mb-2">
+            <Button className="w-full mb-2 bg-green-600 hover:bg-green-700">
               Conectar con Spotify
             </Button>
           </a>
 
           <a href="/api/auth/youtube/login">
-            <Button className="bg-red-500 hover:bg-red-600 w-full mb-4">
+            <Button className="w-full mb-4 bg-red-500 hover:bg-red-600">
               Conectar con YouTube
             </Button>
           </a>
 
-          <Button
-            onClick={handleFetchPlaylists}
-            className="bg-blue-500 hover:bg-blue-600 w-full"
-          >
+          <Button onClick={handleFetchPlaylists} className="w-full mb-2 bg-blue-500">
             Obtener playlists
           </Button>
 
-          {playlists.length > 0 && ytAccessToken && (
+          {playlists.length > 0 && ytToken && (
             <Button
-              onClick={handleMigration}
-              className="bg-yellow-500 hover:bg-yellow-600 w-full mt-4"
+              onClick={migrateToYouTube}
+              className="w-full bg-purple-600 hover:bg-purple-700"
             >
               Migrar a YouTube
             </Button>
           )}
 
-          {progress > 0 && progress < 100 && (
-            <div className="mt-4">
+          {progress > 0 && (
+            <div className="mt-6">
               <Progress value={progress} />
-              <p className="text-sm mt-2">Migrando... {progress}%</p>
+              <p className="mt-2 text-sm">Progreso: {progress}%</p>
             </div>
           )}
 
-          {migrationMessages.length > 0 && (
-            <div className="mt-6 text-left">
-              <h2 className="text-md font-semibold mb-2">Resultado de la migración:</h2>
-              <ul className="list-disc ml-5 text-sm space-y-1">
-                {migrationMessages.map((msg, idx) => (
-                  <li key={idx}>{msg}</li>
+          {results.length > 0 && (
+            <div className="mt-4 text-left">
+              <h2 className="text-lg font-semibold mb-2">Resultado de la migración:</h2>
+              <ul className="list-disc ml-5 text-sm">
+                {results.map((r, i) => (
+                  <li key={i}>{r}</li>
                 ))}
               </ul>
             </div>
