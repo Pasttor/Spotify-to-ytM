@@ -5,32 +5,38 @@ import { Card, CardContent } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 
 export default function Home() {
-  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [spotifyAccessToken, setSpotifyAccessToken] = useState<string | null>(null);
+  const [youtubeAccessToken, setYoutubeAccessToken] = useState<string | null>(null);
   const [playlists, setPlaylists] = useState<any[]>([]);
 
-  // Recuperar token desde la URL y guardarlo en localStorage
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const spotifyToken = urlParams.get("access_token");
-    const youtubeToken = urlParams.get("yt_access_token");
+    const ytToken = urlParams.get("yt_access_token");
 
     if (spotifyToken) {
-      setAccessToken(spotifyToken);
+      setSpotifyAccessToken(spotifyToken);
       localStorage.setItem("spotify_access_token", spotifyToken);
     } else {
-      const savedToken = localStorage.getItem("spotify_access_token");
-      if (savedToken) {
-        setAccessToken(savedToken);
+      const savedSpotifyToken = localStorage.getItem("spotify_access_token");
+      if (savedSpotifyToken) {
+        setSpotifyAccessToken(savedSpotifyToken);
       }
     }
 
-    if (youtubeToken) {
-      localStorage.setItem("youtube_access_token", youtubeToken);
+    if (ytToken) {
+      setYoutubeAccessToken(ytToken);
+      localStorage.setItem("yt_access_token", ytToken);
+    } else {
+      const savedYTToken = localStorage.getItem("yt_access_token");
+      if (savedYTToken) {
+        setYoutubeAccessToken(savedYTToken);
+      }
     }
   }, []);
 
   const handleFetchPlaylists = async () => {
-    if (!accessToken) {
+    if (!spotifyAccessToken) {
       alert("Necesitas autenticarte con Spotify primero.");
       return;
     }
@@ -39,7 +45,7 @@ export default function Home() {
       const res = await fetch("/api/spotify/playlists", {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${spotifyAccessToken}`,
         },
       });
 
@@ -58,13 +64,13 @@ export default function Home() {
           <p className="mb-6">Conecta tus cuentas para comenzar la migración.</p>
 
           <a href="/api/auth/spotify/login">
-            <Button className="bg-green-500 hover:bg-green-600 w-full mb-2">
+            <Button className="bg-green-500 hover:bg-green-600 w-full mb-4">
               Conectar con Spotify
             </Button>
           </a>
 
           <a href="/api/auth/youtube/login">
-            <Button className="bg-red-600 hover:bg-red-700 w-full mb-4">
+            <Button className="bg-red-500 hover:bg-red-600 w-full mb-4">
               Conectar con YouTube
             </Button>
           </a>
@@ -75,7 +81,7 @@ export default function Home() {
 
           {playlists.length > 0 && (
             <div className="mt-4 text-left">
-              <h2 className="text-lg font-semibold mb-2">Tus Playlists:</h2>
+              <h2 className="text-lg font-semibold mb-2">Tus Playlists de Spotify:</h2>
               <ul className="list-disc ml-5">
                 {playlists.map((playlist: any) => (
                   <li key={playlist.id}>{playlist.name}</li>

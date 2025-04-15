@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");
 
   if (!code) {
-    return new NextResponse("No code provided", { status: 400 });
+    return new NextResponse("No se recibió el código de autorización", { status: 400 });
   }
 
   const params = new URLSearchParams({
@@ -20,24 +20,29 @@ export async function GET(req: NextRequest) {
     grant_type: "authorization_code",
   });
 
-  const response = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: params.toString(),
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    return new NextResponse(`Error getting token: ${JSON.stringify(data)}`, {
-      status: 500,
+  try {
+    const response = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: params.toString(),
     });
-  }
 
-  // Redirigir al home con access_token
-  const redirectUrl = new URL("/", req.url);
-  redirectUrl.searchParams.set("yt_access_token", data.access_token);
-  return NextResponse.redirect(redirectUrl.toString());
+    const data = await response.json();
+
+    if (!response.ok) {
+      return new NextResponse(`Error al obtener el token: ${JSON.stringify(data)}`, {
+        status: 500,
+      });
+    }
+
+    // Redirige al frontend con el access_token como query param (o guarda en localStorage del frontend)
+    const redirectUrl = new URL("/", req.url);
+    redirectUrl.searchParams.set("yt_access_token", data.access_token);
+
+    return NextResponse.redirect(redirectUrl.toString());
+  } catch (error) {
+    return new NextResponse(`Error en la solicitud: ${error}`, { status: 500 });
+  }
 }
