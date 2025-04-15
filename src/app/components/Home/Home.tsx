@@ -43,6 +43,7 @@ export default function Home() {
 
     try {
       const res = await fetch("/api/spotify/playlists", {
+        method: "GET",
         headers: { Authorization: `Bearer ${spotifyToken}` },
       });
 
